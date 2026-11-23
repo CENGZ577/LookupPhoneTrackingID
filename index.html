@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#f8dced">
+<title>Lookup Phone ID</title>
+<style>
+:root{--pink:#f8dced;--deep:#a33f91;--blue:#287bb5;--ink:#49384a;--card:#fff;--muted:#806d80}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#fff5fa,#eaf7ff);font-family:system-ui,-apple-system,sans-serif;color:var(--ink);min-height:100vh}
+header{padding:28px 20px 22px;background:linear-gradient(120deg,#f6d7eb,#d9efff);border-radius:0 0 28px 28px;text-align:center}
+h1{font-size:25px;margin:0;color:var(--deep)}header p{margin:8px 0 0;color:#6c5b70;font-size:13px}
+main{max-width:560px;margin:auto;padding:18px}
+.card{background:var(--card);border:1px solid #e7d8e8;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 8px 25px #9b78a51a}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:8px}
+input{width:100%;padding:15px;border:1px solid #d8c9dd;border-radius:13px;font-size:17px;outline:none;color:var(--ink)}
+input:focus{border-color:#62aee0;box-shadow:0 0 0 3px #dff2ff}
+button{border:0;border-radius:13px;padding:14px 16px;font-weight:700;font-size:15px;background:linear-gradient(100deg,#e9b8dc,#b9e3fa);color:#49384a;width:100%;margin-top:12px}
+.note{font-size:12px;line-height:1.55;color:var(--muted)}
+.result{display:none}.line{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #f0e8f1;font-size:14px}.line:last-child{border:0}.line span:first-child{color:var(--muted)}.line strong{text-align:right;overflow-wrap:anywhere}
+.pill{display:inline-block;background:#e8f6ff;color:#287bb5;padding:5px 10px;border-radius:30px;font-size:11px;font-weight:700}
+.history-item{padding:10px 0;border-bottom:1px solid #f0e8f1;font-size:13px}
+footer{text-align:center;padding:8px 20px 28px;color:#927e91;font-size:11px}
+</style>
+</head>
+<body>
+<header><div class="pill">PHONE NUMBER INFORMATION</div><h1>♡ Lookup Phone ID</h1><p>Validasi format & informasi penomoran publik</p></header>
+<main>
+<section class="card">
+<label for="phone">Masukkan nomor telepon</label>
+<input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Contoh: +6281234567890" maxlength="22">
+<button id="lookup">Cari Informasi Nomor ✧</button>
+<p class="note">Gunakan kode negara, misalnya +62 untuk Indonesia. Aplikasi ini memeriksa pola nomor, bukan melacak lokasi GPS atau mengungkap identitas pemilik.</p>
+</section>
+<section class="card result" id="result" aria-live="polite">
+<div class="pill">HASIL ANALISIS FORMAT</div>
+<div id="rows"></div>
+<p class="note" id="disclaimer"></p>
+</section>
+<section class="card">
+<strong>Riwayat pencarian di perangkat</strong>
+<div id="history" class="note" style="margin-top:8px">Belum ada pencarian.</div>
+<button id="clear" style="background:#f5e8f1">Hapus riwayat</button>
+</section>
+<section class="card">
+<strong>Privasi & akurasi</strong>
+<p class="note">Tidak meminta izin kontak, SMS, mikrofon, kamera, atau lokasi. Data pencarian disimpan lokal pada perangkat. Operator, status aktif, pemilik, dan lokasi real-time tidak dapat dipastikan dari nomor saja.</p>
+</section>
+</main>
+<footer>Lookup Phone ID • Versi 1.0.0 • Informasi format bukan verifikasi identitas.</footer>
+<script>
+const $=id=>document.getElementById(id);
+const countries=[
+{code:"62",name:"Indonesia",min:9,max:13},{code:"1",name:"Amerika Serikat/Kanada",min:10,max:10},
+{code:"44",name:"Britania Raya",min:10,max:10},{code:"60",name:"Malaysia",min:8,max:10},
+{code:"65",name:"Singapura",min:8,max:8},{code:"61",name:"Australia",min:9,max:9},
+{code:"91",name:"India",min:10,max:10},{code:"81",name:"Jepang",min:9,max:10},
+{code:"49",name:"Jerman",min:7,max:12},{code:"33",name:"Prancis",min:9,max:9},
+{code:"63",name:"Filipina",min:10,max:10},{code:"66",name:"Thailand",min:8,max:9}
+];
+function analyze(raw){
+ let cleaned=raw.trim().replace(/[\s().-]/g,'');
+ if(cleaned.startsWith("00"))cleaned="+"+cleaned.slice(2);
+ if(!/^\+?[0-9]+$/.test(cleaned))return {error:"Masukkan hanya angka dan awalan + kode negara."};
+ if(!cleaned.startsWith("+"))return {error:"Tambahkan kode negara. Contoh Indonesia: +62xxxxxxxxxx."};
+ const digits=cleaned.slice(1);
+ if(digits.length<7||digits.length>15)return {error:"Panjang nomor di luar rentang umum internasional (7–15 digit)."};
+ const country=countries.sort((a,b)=>b.code.length-a.code.length).find(c=>digits.startsWith(c.code));
+ if(!country)return {number:"+"+digits,country:"Tidak dikenali dalam daftar offline",code:"+"+digits.slice(0,Math.min(3,digits.length)),length:digits.length,valid:"Belum dapat ditentukan"};
+ const national=digits.slice(country.code.length);
+ const plausible=national.length>=country.min&&national.length<=country.max;
+ let hint="Tidak tersedia";
+ if(country.code==="62"){
+   if(/^8/.test(national))hint="Pola nomor seluler Indonesia (awalan 8)";
+   else if(/^2/.test(national))hint="Kemungkinan nomor area tetap";
+   else hint="Kode negara Indonesia; jenis nomor belum dipastikan";
+ }
+ return {number:"+"+digits,country:country.name,code:"+"+country.code,length:digits.length,nationalLength:national.length,valid:plausible?"Panjang nomor tampak sesuai pola umum":"Panjang nomor perlu diverifikasi",hint};
+}
+function show(obj){
+ $("result").style.display="block";
+ if(obj.error){$("rows").innerHTML='<div class="line"><span>Input</span><strong>'+escapeHtml(obj.error)+'</strong></div>';$("disclaimer").textContent="Periksa kembali format nomor.";return;}
+ const items=[["Nomor",obj.number],["Negara/kode",obj.country+" ("+obj.code+")"],["Jumlah digit",obj.length],["Panjang nasional",obj.nationalLength??"—"],["Pemeriksaan format",obj.valid],["Petunjuk pola",obj.hint||"—"]];
+ $("rows").innerHTML=items.map(x=>'<div class="line"><span>'+escapeHtml(String(x[0]))+'</span><strong>'+escapeHtml(String(x[1]))+'</strong></div>').join("");
+ $("disclaimer").textContent="Hasil ini hanya analisis format berbasis daftar offline. Bukan bukti nomor aktif, identitas pemilik, operator saat ini, atau lokasi perangkat.";
+ const old=JSON.parse(localStorage.getItem("lookupHistory")||"[]");
+ old.unshift(obj.number);localStorage.setItem("lookupHistory",JSON.stringify([...new Set(old)].slice(0,8)));renderHistory();
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function renderHistory(){const h=JSON.parse(localStorage.getItem("lookupHistory")||"[]");$("history").innerHTML=h.length?h.map(escapeHtml).join("<br>"):"Belum ada pencarian.";}
+$("lookup").addEventListener("click",()=>{const raw=$("phone").value; if(!raw.trim()){show({error:"Masukkan nomor terlebih dahulu."});return;}show(analyze(raw));});
+$("phone").addEventListener("keydown",e=>{if(e.key==="Enter")$("lookup").click();});
+$("clear").addEventListener("click",()=>{localStorage.removeItem("lookupHistory");renderHistory();});
+renderHistory();
+</script>
+</body></html>
